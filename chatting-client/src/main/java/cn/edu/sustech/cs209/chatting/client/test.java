@@ -16,8 +16,6 @@ public class test {
     }
 
     public static void main(String[] args) throws UnknownHostException {
-        System.out.println(address);
-        InetAddress ad = InetAddress.getByName((address+"").split("/")[1]);
-        System.out.println(ad);
+        System.out.println("ji,".split(",").length);
     }
 }

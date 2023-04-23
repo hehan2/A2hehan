@@ -47,10 +47,44 @@ public class Main {
                 users.add(newUser);
                 byte[] mes= ("add," + messageSet[3]).getBytes();
                 for (User user : users) {
-                    DatagramPacket packet1 = new DatagramPacket(mes, mes.length, user.getAdr(), user.getPort());
+                    if(user != newUser){
+                        DatagramPacket packet1 = new DatagramPacket(mes, mes.length, user.getAdr(), user.getPort());
+                        try {
+                            socket.send(packet1);
+                            System.out.println("sending add successfully");
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    else{
+                        String onlineUser = "";
+                        for (int i = 0; i < users.size(); i++) {
+                            onlineUser = onlineUser + users.get(i).getName() + ",";
+                        }
+                        byte[] Ownmes = ("onlineUser," + onlineUser).getBytes();
+                        DatagramPacket packet1 = new DatagramPacket(Ownmes, Ownmes.length, user.getAdr(), user.getPort());
+                        try {
+                            socket.send(packet1);
+                            System.out.println("sending add successfully");
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+            }
+            if(messageSet[0].equals("normal")){
+                String sendTo = messageSet[3];
+                User user = findUser(sendTo);
+                if(user == null){
+                    System.out.println("No such user");
+                }
+                else{
+                    int port = user.getPort();
+                    InetAddress adr = user.getAdr();
+                    byte[] mes = message.getBytes();
+                    DatagramPacket packet1 = new DatagramPacket(mes, mes.length, adr, port);
                     try {
                         socket.send(packet1);
-                        System.out.println("sending add successfully");
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -59,5 +93,13 @@ public class Main {
             }
         }
 
+    }
+    public static User findUser(String target){
+        for (int i = 0; i < users.size(); i++) {
+            if(users.get(i).getName().equals(target)){
+                return users.get(i);
+            }
+        }
+        return null;
     }
 }

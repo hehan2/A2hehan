@@ -44,7 +44,15 @@ public class Controller implements Initializable {
 
     String username;
 
+    String chatWith;
+
     ObservableList<String> onlineFriends = FXCollections.observableArrayList();
+    ObservableList<String> chattingFriends = FXCollections.observableArrayList();
+
+    HashMap<String, ObservableList<Message>> chatHistory = new HashMap<>();
+
+    DatagramSocket socket;
+
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
 
@@ -61,7 +69,6 @@ public class Controller implements Initializable {
              */
             username = input.get();
             //判断是否合法
-            DatagramSocket socket = null;
             try {
                 socket = new DatagramSocket();
             } catch (SocketException e) {
@@ -84,7 +91,8 @@ public class Controller implements Initializable {
         }
 
         chatContentList.setCellFactory(new MessageCellFactory());
-        chatList.setItems(onlineFriends);
+        chatList.setItems(chattingFriends);
+
     }
 
     @FXML
@@ -95,7 +103,8 @@ public class Controller implements Initializable {
         ComboBox<String> userSel = new ComboBox<>();
 
         // FIXME: get the user list from server, the current user's name should be filtered out
-        userSel.getItems().addAll("Item 1", "Item 2", "Item 3");
+        userSel.setItems(onlineFriends);
+        //userSel.getItems().addAll("item1", "item2");
 
         Button okBtn = new Button("OK");
         okBtn.setOnAction(e -> {
@@ -112,6 +121,16 @@ public class Controller implements Initializable {
 
         // TODO: if the current user already chatted with the selected user, just open the chat with that user
         // TODO: otherwise, create a new chat item in the left panel, the title should be the selected user's name
+        if(chatHistory.containsKey(user.get())){
+            chatContentList.setItems(chatHistory.get(user.get()));
+        }
+        else{
+            chattingFriends.add(user.get());
+            chatWith = user.get();
+            System.out.println(chatWith);
+            chatHistory.put(user.get(), FXCollections.observableArrayList());
+            chatContentList.setItems(chatHistory.get(user.get()));
+        }
     }
 
     /**
@@ -137,13 +156,44 @@ public class Controller implements Initializable {
      */
     @FXML
     public void doSendMessage() {
-        // TODO
+        String data = inputArea.getText();
+        Long timeStamp = System.currentTimeMillis();
+        String sentBy = username;
+        String sentTo = chatWith;
+        byte[] mes = ("normal,"+timeStamp+"," + sentBy+","+sentTo+","+data).getBytes();
+        DatagramPacket packet = new DatagramPacket(mes, mes.length, address, SERVER_PORT);
+        try {
+            socket.send(packet);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        Message message = new Message(timeStamp, sentBy, sentTo, data);
+        if(chatHistory.containsKey(sentTo)){
+            chatHistory.get(sentTo).add(message);
+        }
+        else{
+            chatHistory.put(sentTo, FXCollections.observableArrayList());
+            chatHistory.get(sentTo).add(message);
+        }
+
+
     }
     public void addUser(String user){
 //        if(!user.equals(username)){
 //            onlineFriends.add(user);
 //        }
         onlineFriends.add(user);
+    }
+    public void receiveMes(String sendBy, Message mes){
+        if(chatHistory.containsKey(sendBy)){
+            chatHistory.get(sendBy).add(mes);
+        }
+        else{
+            chatHistory.put(sendBy, FXCollections.observableArrayList());
+            chatHistory.get(sendBy).add(mes);
+        }
+        chatWith = sendBy;
+
     }
 
     /**
