@@ -2,7 +2,10 @@ package cn.edu.sustech.cs209.chatting.client;
 
 import cn.edu.sustech.cs209.chatting.common.Message;
 import javafx.application.Platform;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -12,19 +15,36 @@ import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 
-import java.net.URL;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.ResourceBundle;
+import java.io.IOException;
+import java.net.*;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Controller implements Initializable {
+    private static final int SERVER_PORT = 8000;
+    private static final InetAddress address;
 
+    static {
+        try {
+            address = InetAddress.getByName("localhost");
+        } catch (UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
+    }
     @FXML
     ListView<Message> chatContentList;
+    @FXML
+    ListView<String> chatList;
+    @FXML
+    TextArea inputArea;
+    @FXML
+    Label currentUsername;
+    @FXML
+    Label currentOnlineCnt;
 
     String username;
 
+    ObservableList<String> onlineFriends = FXCollections.observableArrayList();
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
 
@@ -40,12 +60,31 @@ public class Controller implements Initializable {
                      if so, ask the user to change the username
              */
             username = input.get();
+            //判断是否合法
+            DatagramSocket socket = null;
+            try {
+                socket = new DatagramSocket();
+            } catch (SocketException e) {
+                throw new RuntimeException(e);
+            }
+            byte[] init = ("init," + socket.getLocalPort()+ "," + (address + "").split("/")[1]
+                    + "," + username).getBytes();
+            DatagramPacket initialize = new DatagramPacket(init, init.length, address, SERVER_PORT);
+            try {
+                socket.send(initialize);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            ClientThread clientThread = new ClientThread(this, socket);
+            clientThread.start();
+
         } else {
             System.out.println("Invalid username " + input + ", exiting");
             Platform.exit();
         }
 
         chatContentList.setCellFactory(new MessageCellFactory());
+        chatList.setItems(onlineFriends);
     }
 
     @FXML
@@ -87,6 +126,7 @@ public class Controller implements Initializable {
      */
     @FXML
     public void createGroupChat() {
+
     }
 
     /**
@@ -98,6 +138,12 @@ public class Controller implements Initializable {
     @FXML
     public void doSendMessage() {
         // TODO
+    }
+    public void addUser(String user){
+//        if(!user.equals(username)){
+//            onlineFriends.add(user);
+//        }
+        onlineFriends.add(user);
     }
 
     /**
