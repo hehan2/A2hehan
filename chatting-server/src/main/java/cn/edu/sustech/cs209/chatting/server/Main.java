@@ -72,7 +72,7 @@ public class Main {
                     }
                 }
             }
-            if(messageSet[0].equals("normal")){
+            else if(messageSet[0].equals("normal")){
                 String sendTo = messageSet[3];
                 User user = findUser(sendTo);
                 if(user == null){
@@ -90,6 +90,70 @@ public class Main {
                     }
                 }
 
+            }
+            else if (messageSet[0].equals("formingGroup")){
+                for (int i = 1; i < messageSet.length; i++) {
+                    String userName = messageSet[i].trim();
+                    if(i != messageSet.length - 1){
+                        User user = findUser(userName);
+                        int port = user.getPort();
+                        InetAddress adr = user.getAdr();
+                        byte[] mes = message.getBytes();
+                        DatagramPacket packet1 = new DatagramPacket(mes, mes.length, adr, port);
+                        try {
+                            socket.send(packet1);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    else{
+                        int number = Integer.parseInt(userName.substring(userName.indexOf("(") + 1, userName.indexOf(")")));
+                        userName = userName.substring(0, userName.indexOf("(")).trim();
+                        System.out.println(userName);
+                        User user = findUser(userName);
+                        int port = user.getPort();
+                        InetAddress adr = user.getAdr();
+                        byte[] mes = message.getBytes();
+                        DatagramPacket packet1 = new DatagramPacket(mes, mes.length, adr, port);
+                        try {
+                            socket.send(packet1);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+            }
+            else if(messageSet[0].equals("groupMessage")){
+                String groupName = "";
+                for (int i = 3; i < messageSet.length - 1; i++) {
+                    if(i != messageSet.length - 2){
+                        groupName += messageSet[i] + ",";
+                    }
+                    else{
+                        groupName += messageSet[i];
+                    }
+                }
+                for (int i = 3; i < messageSet.length - 1; i++) {
+                    String userName = messageSet[i].trim();
+                    if(i == messageSet.length - 2){
+                        userName = userName.substring(0, userName.indexOf("(")).trim();
+                    }
+                    System.out.println(userName);
+                    if(userName.equals(messageSet[2])){
+                        continue;
+                    }
+                    User user = findUser(userName);
+                    int port = user.getPort();
+                    InetAddress adr = user.getAdr();
+                    String data = messageSet[messageSet.length-1];
+                    byte[] mes = ("groupMessage," + messageSet[1] + "," + messageSet[2] + "," +user.getName() + "," + messageSet[messageSet.length - 1] + ",#" + groupName).getBytes();
+                    DatagramPacket packet1 = new DatagramPacket(mes, mes.length, adr, port);
+                    try {
+                        socket.send(packet1);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
             }
         }
 

@@ -47,6 +47,24 @@ public class ClientThread extends Thread{
                     controller.addUser(mesSet[i]);
                 }
             }
+            else if (message.startsWith("formingGroup")){
+                String groupName = message.substring(13);
+                Platform.runLater(() -> {
+                    controller.groupMessage(groupName);
+                });
+            }
+            else if(message.startsWith("groupMessage")){
+                String[] mesSet = message.split(",");
+                String groupName = mesSet[mesSet.length-1];
+                long stamp = Long.parseLong(mesSet[1]);
+                String sendBy = mesSet[2];
+                String sendTo = message.substring(message.indexOf("#") + 1);
+                String data = mesSet[4];
+                Message mes = new Message(stamp, sendBy, sendTo, data);
+                Platform.runLater(() -> {
+                    controller.receiveGroupMes(mes, sendTo);
+                });
+            }
 
         }
     }

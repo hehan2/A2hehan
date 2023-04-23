@@ -2,6 +2,9 @@ package cn.edu.sustech.cs209.chatting.client;
 
 import cn.edu.sustech.cs209.chatting.common.Message;
 import javafx.application.Platform;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
@@ -11,6 +14,8 @@ import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.scene.control.cell.CheckBoxListCell;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Stage;
 import javafx.util.Callback;
@@ -92,6 +97,12 @@ public class Controller implements Initializable {
 
         chatContentList.setCellFactory(new MessageCellFactory());
         chatList.setItems(chattingFriends);
+        chatList.setOnMouseClicked(mouseEvent -> {
+            if(mouseEvent.getClickCount() == 1){
+                chatWith = chatList.getSelectionModel().getSelectedItem();
+                chatContentList.setItems(chatHistory.get(chatWith));
+            }
+        });
 
     }
 
@@ -145,7 +156,64 @@ public class Controller implements Initializable {
      */
     @FXML
     public void createGroupChat() {
+        Stage stage = new Stage();
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 20, 20, 20));
 
+
+        // Create ListView for user selection
+        ListView<String> listView = new ListView<>();
+        listView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        listView.setItems(onlineFriends);
+
+        // Create OK button
+        Button okBtn = new Button("OK");
+        okBtn.setOnAction(event -> {
+            // Get selected users
+            List<String> selectedUsers = listView.getSelectionModel().getSelectedItems();
+            System.out.println("hi");
+            for (String selectedUser : selectedUsers) {
+                System.out.println(selectedUser);
+            }
+            List<String> list = new ArrayList<>(selectedUsers);
+            for (String selectedUser : list) {
+                System.out.println("late " + selectedUser);
+            }
+
+            // Generate group chat name
+            StringBuilder groupNameBuilder = new StringBuilder();
+            list.sort(String::compareTo);
+            if (list.size() > 3) {
+                for (int i = 0; i < 3; i++) {
+                    groupNameBuilder.append(list.get(i)).append(", ");
+                }
+                groupNameBuilder.append("... (").append(list.size()).append(")");
+            } else {
+                groupNameBuilder.append(String.join(", ", list)).append(" (").append(list.size()).append(")");
+            }
+
+
+            String groupName = groupNameBuilder.toString();
+            System.out.println(groupName);
+            // Create new group chat item and add it to the left panel
+            byte[] mes = ("formingGroup," + groupName).getBytes();
+            DatagramPacket packet = new DatagramPacket(mes, mes.length, address, SERVER_PORT);
+            try {
+                socket.send(packet);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            stage.close();
+        });
+
+        // Add nodes to grid
+        grid.add(listView, 0, 0);
+        grid.add(okBtn, 0, 1);
+
+        stage.setScene(new Scene(grid));
+        stage.show();
     }
 
     /**
@@ -160,7 +228,11 @@ public class Controller implements Initializable {
         Long timeStamp = System.currentTimeMillis();
         String sentBy = username;
         String sentTo = chatWith;
-        byte[] mes = ("normal,"+timeStamp+"," + sentBy+","+sentTo+","+data).getBytes();
+        byte[] mes = null;
+        if(sentTo.contains("(")){
+            mes = ("groupMessage,"+timeStamp+"," + sentBy+","+sentTo+","+data).getBytes();
+        }
+        else mes = ("normal,"+timeStamp+"," + sentBy+","+sentTo+","+data).getBytes();
         DatagramPacket packet = new DatagramPacket(mes, mes.length, address, SERVER_PORT);
         try {
             socket.send(packet);
@@ -175,6 +247,7 @@ public class Controller implements Initializable {
             chatHistory.put(sentTo, FXCollections.observableArrayList());
             chatHistory.get(sentTo).add(message);
         }
+        inputArea.clear();
 
 
     }
@@ -186,14 +259,58 @@ public class Controller implements Initializable {
     }
     public void receiveMes(String sendBy, Message mes){
         if(chatHistory.containsKey(sendBy)){
+            System.out.println(1);
             chatHistory.get(sendBy).add(mes);
         }
         else{
+            System.out.println(2);
             chatHistory.put(sendBy, FXCollections.observableArrayList());
             chatHistory.get(sendBy).add(mes);
         }
-        chatWith = sendBy;
+        if(chattingFriends.size() == 0){
+            System.out.println(3);
+            chattingFriends.add(sendBy);
+            chatContentList.setItems(chatHistory.get(sendBy));
+            chatWith = sendBy;
+        }
+        else if(!chattingFriends.contains(sendBy)){
+            System.out.println(4);
+            chattingFriends.add(sendBy);
+        }
 
+    }
+
+    public void receiveGroupMes(Message mes, String groupName){
+        if(chatHistory.containsKey(groupName)){
+            chatHistory.get(groupName).add(mes);
+        }
+        else{
+            chatHistory.put(groupName, FXCollections.observableArrayList());
+            chatHistory.get(groupName).add(mes);
+        }
+        if(chattingFriends.size() == 0){
+            chattingFriends.add(groupName);
+            chatContentList.setItems(chatHistory.get(groupName));
+            chatWith = groupName;
+        }
+        else if(!chattingFriends.contains(groupName)){
+            chattingFriends.add(groupName);
+        }
+
+    }
+
+    public void groupMessage(String name){
+        if(!chatHistory.containsKey(name)){
+            chatHistory.put(name, FXCollections.observableArrayList());
+        }
+        if(chattingFriends.size() == 0){
+            chattingFriends.add(name);
+            chatContentList.setItems(chatHistory.get(name));
+            chatWith = name;
+        }
+        else if(!chattingFriends.contains(name)){
+            chattingFriends.add(name);
+        }
     }
 
     /**
