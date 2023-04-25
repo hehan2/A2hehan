@@ -23,7 +23,7 @@ import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import javafx.util.Callback;
 
-import java.io.IOException;
+import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -332,6 +332,15 @@ public class Controller implements Initializable {
         }
     }
 
+    public void serverDown(){
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Information Dialog");
+        alert.setHeaderText(null);
+        alert.setContentText("server has done accidentally. Closing Client now...");
+        alert.showAndWait();
+        System.exit(0);
+    }
+
     /**
      * Sends the message to the <b>currently selected</b> chat.
      * <p>
@@ -364,14 +373,11 @@ public class Controller implements Initializable {
             chatHistory.get(sentTo).add(message);
         }
         inputArea.clear();
-
-
     }
     public void addUser(String user){
-//        if(!user.equals(username)){
-//            onlineFriends.add(user);
-//        }
-        onlineFriends.add(user);
+        if(!user.equals(username)){
+            onlineFriends.add(user);
+        }
     }
     public void receiveMes(String sendBy, Message mes){
         if(chatHistory.containsKey(sendBy)){

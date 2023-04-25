@@ -89,6 +89,11 @@ public class ClientThread extends Thread{
                 Platform.runLater(() -> {
                     controller.updateGroup(oldGroup, newGroup);
                 });
+            }
+            else if(message.startsWith("serverDown")){
+                Platform.runLater(() -> {
+                    controller.serverDown();
+                });
 
             }
 

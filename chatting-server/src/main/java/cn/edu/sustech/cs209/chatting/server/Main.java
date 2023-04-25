@@ -17,6 +17,7 @@ public class Main {
 
     private static Map<String, List<String>> groups = new HashMap<>();
     public static void main(String[] args) {
+
         System.out.println("Starting server");
         try {
             socket = new DatagramSocket(PORT);
@@ -25,6 +26,18 @@ public class Main {
         catch (SocketException | UnknownHostException e){
             e.printStackTrace();
         }
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            for (int i = 0; i < users.size(); i++) {
+                User user  = users.get(i);
+                byte[] mes = ("serverDown").getBytes();
+                DatagramPacket packet = new DatagramPacket(mes, mes.length, user.getAdr(), user.getPort());
+                try {
+                    socket.send(packet);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }));
         while (true){
             DatagramPacket packet = new DatagramPacket(incoming, incoming.length);
             try {
