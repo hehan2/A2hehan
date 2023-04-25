@@ -82,7 +82,14 @@ public class Controller implements Initializable {
                      if so, ask the user to change the username
              */
             username = input.get();
-
+            if(username.contains(";") || username.contains(",") || username.contains("#")){
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Information Dialog");
+                alert.setHeaderText(null);
+                alert.setContentText("Invalid username");
+                alert.showAndWait();
+                System.exit(0);
+            }
             //判断是否合法
             try {
                 socket = new DatagramSocket();
