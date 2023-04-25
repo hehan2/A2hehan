@@ -82,6 +82,7 @@ public class Controller implements Initializable {
                      if so, ask the user to change the username
              */
             username = input.get();
+
             //判断是否合法
             try {
                 socket = new DatagramSocket();
@@ -103,7 +104,7 @@ public class Controller implements Initializable {
             System.out.println("Invalid username " + input + ", exiting");
             Platform.exit();
         }
-
+        currentUsername.setText("Current User: " + username);
         chatContentList.setCellFactory(new MessageCellFactory());
         chatList.setItems(chattingFriends);
         chatList.setOnMouseClicked(mouseEvent -> {
@@ -163,6 +164,14 @@ public class Controller implements Initializable {
      * If there are <= 3 users: do not display the ellipsis, for example:
      * UserA, UserB (2)
      */
+    public void repeatName(){
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Information Dialog");
+        alert.setHeaderText(null);
+        alert.setContentText("name has been used");
+        alert.showAndWait();
+        System.exit(0);
+    }
     @FXML
     public void createGroupChat() {
         Stage stage = new Stage();
@@ -181,6 +190,14 @@ public class Controller implements Initializable {
         Button okBtn = new Button("OK");
         okBtn.setOnAction(event -> {
             // Get selected users
+            if(!listView.getSelectionModel().getSelectedItems().contains(username)){
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Information Dialog");
+                alert.setHeaderText(null);
+                alert.setContentText("Chat group should contain yourself");
+                alert.showAndWait();
+                return;
+            }
             List<String> selectedUsers = listView.getSelectionModel().getSelectedItems();
             System.out.println("hi");
             for (String selectedUser : selectedUsers) {
@@ -235,7 +252,7 @@ public class Controller implements Initializable {
         try {
             socket.send(packet);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
         clientThread.setRunning(false);
         //socket.close();
@@ -244,6 +261,7 @@ public class Controller implements Initializable {
 
     public void offUser(String offName){
         onlineFriends.remove(offName);
+        currentOnlineCnt.setText("Online: " + onlineFriends.size());
         if(chattingFriends.contains(offName)){
             if(chatWith.equals(offName)){
                 Alert alert = new Alert(Alert.AlertType.INFORMATION);
@@ -251,11 +269,9 @@ public class Controller implements Initializable {
                 alert.setHeaderText(null);
                 alert.setContentText("User " + offName + " has offlined");
                 alert.showAndWait();
-                chattingFriends.remove(offName);
             }
         }
-
-
+        chattingFriends.remove(offName);
     }
 
     public void offGroup(){
@@ -288,6 +304,9 @@ public class Controller implements Initializable {
                 int rightIndex = chatWith.indexOf(")");
                 int number = Integer.parseInt(chatWith.substring(leftIndex + 1, rightIndex)) - 1;
                 String newGroup = chatWith.substring(0, leftIndex + 1) + number + chatWith.substring(rightIndex);
+                if(number == 3){
+                    newGroup = newGroup.replace(", ...", "");
+                }
                 byte[] mes = ("updateGroup;" + chatWith + ";" + newGroup + ";" + username).getBytes();
                 DatagramPacket packet = new DatagramPacket(mes, mes.length, address, SERVER_PORT);
                 try {
@@ -300,16 +319,25 @@ public class Controller implements Initializable {
                 int nameIndex = chatWith.indexOf(username);
                 String newGroup = "";
                 if(chatWith.charAt(nameIndex + username.length() + 1)  == '('){
-                    newGroup = chatWith.replaceFirst(", "+username, "");
+                    newGroup = chatWith.replace(", "+username, "");
                 }
                 else{
-                    newGroup = chatWith.replaceFirst(username + ", ", "");
+                    newGroup = chatWith.replace(username + ", ", "");
                 }
                 int leftIndex = newGroup.indexOf("(");
                 int rightIndex = newGroup.indexOf(")");
                 int number = Integer.parseInt(newGroup.substring(leftIndex + 1, rightIndex)) - 1;
                 newGroup = newGroup.substring(0, leftIndex + 1) + number + newGroup.substring(rightIndex);
-                byte[] mes = ("updateGroup;" + chatWith + ";" + newGroup + ";" + username).getBytes();
+                byte[] mes = null;
+                if(number == 3){
+                    newGroup = newGroup.replace(", ...", "");
+                }
+                if(number >= 3){
+                    mes = ("updateGroup;" + chatWith + ";" + newGroup + ";" + username+";"+"addNew").getBytes();
+                }
+                else{
+                    mes = ("updateGroup;" + chatWith + ";" + newGroup + ";" + username).getBytes();
+                }
                 DatagramPacket packet = new DatagramPacket(mes, mes.length, address, SERVER_PORT);
                 try {
                     socket.send(packet);
@@ -375,9 +403,8 @@ public class Controller implements Initializable {
         inputArea.clear();
     }
     public void addUser(String user){
-        if(!user.equals(username)){
-            onlineFriends.add(user);
-        }
+        onlineFriends.add(user);
+        currentOnlineCnt.setText("Online: " + onlineFriends.size());
     }
     public void receiveMes(String sendBy, Message mes){
         if(chatHistory.containsKey(sendBy)){

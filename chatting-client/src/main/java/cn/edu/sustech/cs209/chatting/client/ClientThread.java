@@ -38,7 +38,10 @@ public class ClientThread extends Thread{
             System.out.println(message.length());
             System.out.println("clinet receiving data: "+message);
             if(message.startsWith("add")){
-                controller.addUser(message.split(",")[1]);
+                Platform.runLater(() -> {
+                    controller.addUser(message.split(",")[1]);
+                });
+
             }
             else if(message.startsWith("normal")){
                 String[] mesSet = message.split(",");
@@ -95,6 +98,11 @@ public class ClientThread extends Thread{
                     controller.serverDown();
                 });
 
+            }
+            else if(message.startsWith("repeatName")){
+                Platform.runLater(() -> {
+                    controller.repeatName();
+                });
             }
 
         }
