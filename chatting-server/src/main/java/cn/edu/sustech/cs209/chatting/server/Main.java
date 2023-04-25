@@ -4,8 +4,7 @@ import cn.edu.sustech.cs209.chatting.common.Message;
 
 import java.io.IOException;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class Main {
     private static byte[] incoming = new byte[256];
@@ -15,6 +14,8 @@ public class Main {
     private static InetAddress address = null;
 
     private static List<User> users = new ArrayList<>();
+
+    private static Map<String, List<String>> groups = new HashMap<>();
     public static void main(String[] args) {
         System.out.println("Starting server");
         try {
@@ -92,13 +93,26 @@ public class Main {
 
             }
             else if (messageSet[0].equals("formingGroup")){
+                int index = message.indexOf(")");
+                String[] groupUsers = message.substring(index + 2).split(",");
+                String groupName = message.substring(13, index + 1);
+                if(groups.containsKey(groupName)){
+                    continue;
+                }
+                else{
+
+                    List<String> groupMember = new ArrayList<>(Arrays.asList(groupUsers));
+                    groups.put(groupName, groupMember);
+                }
+                messageSet = message.substring(0, index + 1).split(",");
+                String newMes = message.substring(0, index + 1);
                 for (int i = 1; i < messageSet.length; i++) {
                     String userName = messageSet[i].trim();
                     if(i != messageSet.length - 1){
                         User user = findUser(userName);
                         int port = user.getPort();
                         InetAddress adr = user.getAdr();
-                        byte[] mes = message.getBytes();
+                        byte[] mes = newMes.getBytes();
                         DatagramPacket packet1 = new DatagramPacket(mes, mes.length, adr, port);
                         try {
                             socket.send(packet1);
@@ -113,7 +127,7 @@ public class Main {
                         User user = findUser(userName);
                         int port = user.getPort();
                         InetAddress adr = user.getAdr();
-                        byte[] mes = message.getBytes();
+                        byte[] mes = newMes.getBytes();
                         DatagramPacket packet1 = new DatagramPacket(mes, mes.length, adr, port);
                         try {
                             socket.send(packet1);
@@ -133,11 +147,9 @@ public class Main {
                         groupName += messageSet[i];
                     }
                 }
-                for (int i = 3; i < messageSet.length - 1; i++) {
-                    String userName = messageSet[i].trim();
-                    if(i == messageSet.length - 2){
-                        userName = userName.substring(0, userName.indexOf("(")).trim();
-                    }
+                List<String> groupUser = groups.get(groupName);
+                for (int i = 0; i < groupUser.size(); i++) {
+                    String userName = groupUser.get(i);
                     System.out.println(userName);
                     if(userName.equals(messageSet[2])){
                         continue;
@@ -148,6 +160,45 @@ public class Main {
                     String data = messageSet[messageSet.length-1];
                     byte[] mes = ("groupMessage," + messageSet[1] + "," + messageSet[2] + "," +user.getName() + "," + messageSet[messageSet.length - 1] + ",#" + groupName).getBytes();
                     DatagramPacket packet1 = new DatagramPacket(mes, mes.length, adr, port);
+                    try {
+                        socket.send(packet1);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+
+            else if(messageSet[0].equals("closeCon")){
+                User offUser = findUser(messageSet[1]);
+                users.remove(offUser);
+                for (int i = 0; i < users.size(); i++) {
+                    User user = users.get(i);
+                    byte[] mes = message.getBytes();
+                    DatagramPacket packet1 = new DatagramPacket(mes, mes.length, user.getAdr(), user.getPort());
+                    try {
+                        socket.send(packet1);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+            else if(messageSet[0].equals("deleteGroup")){
+                groups.remove(messageSet[1]);
+            }
+            else if(message.startsWith("updateGroup")){
+                messageSet = message.split(";");
+                String oldGroup = messageSet[1];
+                String newGroup = messageSet[2];
+                String offUserName = messageSet[3];
+                List<String> groupMember = groups.get(oldGroup);
+                groupMember.remove(offUserName);
+                groups.remove(oldGroup);
+                groups.put(newGroup, groupMember);
+                for (int i = 0; i < groupMember.size(); i++) {
+                    User user = findUser(groupMember.get(i));
+                    byte[] mes = message.getBytes();
+                    assert user != null;
+                    DatagramPacket packet1 = new DatagramPacket(mes, mes.length, user.getAdr(), user.getPort());
                     try {
                         socket.send(packet1);
                     } catch (IOException e) {

@@ -11,18 +11,28 @@ public class ClientThread extends Thread{
     private Controller controller;
     private final DatagramSocket socket;
     private byte[] incoming =new byte[256];
+    private boolean running = true;
+
+    public boolean isRunning() {
+        return running;
+    }
+
+    public void setRunning(boolean running) {
+        this.running = running;
+    }
+
     public ClientThread(Controller controller, DatagramSocket socket){
         this.controller = controller;
         this.socket = socket;
     }
     public void run(){
         System.out.println("local thread starting..");
-        while (true){
+        while (running){
             DatagramPacket packet = new DatagramPacket(incoming, incoming.length);
             try {
                 socket.receive(packet);
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                e.printStackTrace();
             }
             String message = new String(packet.getData(), 0, packet.getLength());
             System.out.println(message.length());
@@ -64,6 +74,22 @@ public class ClientThread extends Thread{
                 Platform.runLater(() -> {
                     controller.receiveGroupMes(mes, sendTo);
                 });
+            }
+
+            else if(message.startsWith("closeCon")){
+                String offUser = message.split(",")[1];
+                Platform.runLater(() -> {
+                    controller.offUser(offUser);
+                });
+            }
+            else if(message.startsWith("updateGroup")){
+                String[] messageSet = message.split(";");
+                String oldGroup = messageSet[1];
+                String newGroup = messageSet[2];
+                Platform.runLater(() -> {
+                    controller.updateGroup(oldGroup, newGroup);
+                });
+
             }
 
         }

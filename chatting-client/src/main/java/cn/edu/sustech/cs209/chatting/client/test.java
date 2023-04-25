@@ -16,6 +16,7 @@ public class test {
     }
 
     public static void main(String[] args) throws UnknownHostException {
-        System.out.println("ji,".split(",").length);
+        String emoji = "\uD83D\uDE01";
+        System.out.println(emoji);
     }
 }

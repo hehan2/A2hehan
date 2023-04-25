@@ -7,6 +7,7 @@ import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -17,7 +18,9 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.CheckBoxListCell;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 import javafx.util.Callback;
 
 import java.io.IOException;
@@ -46,6 +49,10 @@ public class Controller implements Initializable {
     Label currentUsername;
     @FXML
     Label currentOnlineCnt;
+    @FXML
+    VBox rootLayout;
+    @FXML
+    Button exitButton;
 
     String username;
 
@@ -57,6 +64,8 @@ public class Controller implements Initializable {
     HashMap<String, ObservableList<Message>> chatHistory = new HashMap<>();
 
     DatagramSocket socket;
+
+    ClientThread clientThread;
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
@@ -87,7 +96,7 @@ public class Controller implements Initializable {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            ClientThread clientThread = new ClientThread(this, socket);
+            clientThread = new ClientThread(this, socket);
             clientThread.start();
 
         } else {
@@ -196,6 +205,9 @@ public class Controller implements Initializable {
 
 
             String groupName = groupNameBuilder.toString();
+            for (int i = 0; i < list.size(); i++) {
+                groupName = groupName + "," + list.get(i);
+            }
             System.out.println(groupName);
             // Create new group chat item and add it to the left panel
             byte[] mes = ("formingGroup," + groupName).getBytes();
@@ -214,6 +226,110 @@ public class Controller implements Initializable {
 
         stage.setScene(new Scene(grid));
         stage.show();
+    }
+
+    @FXML
+    public void handleClose(){
+        byte[] mes = ("closeCon," + username).getBytes();
+        DatagramPacket packet = new DatagramPacket(mes, mes.length, address, SERVER_PORT);
+        try {
+            socket.send(packet);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        clientThread.setRunning(false);
+        //socket.close();
+
+    }
+
+    public void offUser(String offName){
+        onlineFriends.remove(offName);
+        if(chattingFriends.contains(offName)){
+            if(chatWith.equals(offName)){
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Information Dialog");
+                alert.setHeaderText(null);
+                alert.setContentText("User " + offName + " has offlined");
+                alert.showAndWait();
+                chattingFriends.remove(offName);
+            }
+        }
+
+
+    }
+
+    public void offGroup(){
+        if(chatWith.split(",").length == 1 && chatWith.charAt(chatWith.length() - 1) != ')'){
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Information Dialog");
+            alert.setHeaderText(null);
+            alert.setContentText("No group selected");
+            alert.showAndWait();
+        }
+        else if(chatWith.split(",").length == 1 && chatWith.charAt(chatWith.length() - 1) == ')'){
+            chattingFriends.remove(chatWith);
+            chatHistory.remove(chatWith);
+            chatContentList.setItems(null);
+            byte[] mes = ("deleteGroup,"+chatWith).getBytes();
+            DatagramPacket packet = new DatagramPacket(mes, mes.length, address, SERVER_PORT);
+            try {
+                socket.send(packet);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            chatWith = null;
+        }
+        else{
+            chattingFriends.remove(chatWith);
+            chatHistory.remove(chatWith);
+            chatContentList.setItems(null);
+            if(!chatWith.contains(username)){
+                int leftIndex = chatWith.indexOf("(");
+                int rightIndex = chatWith.indexOf(")");
+                int number = Integer.parseInt(chatWith.substring(leftIndex + 1, rightIndex)) - 1;
+                String newGroup = chatWith.substring(0, leftIndex + 1) + number + chatWith.substring(rightIndex);
+                byte[] mes = ("updateGroup;" + chatWith + ";" + newGroup + ";" + username).getBytes();
+                DatagramPacket packet = new DatagramPacket(mes, mes.length, address, SERVER_PORT);
+                try {
+                    socket.send(packet);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            else{
+                int nameIndex = chatWith.indexOf(username);
+                String newGroup = "";
+                if(chatWith.charAt(nameIndex + username.length() + 1)  == '('){
+                    newGroup = chatWith.replaceFirst(", "+username, "");
+                }
+                else{
+                    newGroup = chatWith.replaceFirst(username + ", ", "");
+                }
+                int leftIndex = newGroup.indexOf("(");
+                int rightIndex = newGroup.indexOf(")");
+                int number = Integer.parseInt(newGroup.substring(leftIndex + 1, rightIndex)) - 1;
+                newGroup = newGroup.substring(0, leftIndex + 1) + number + newGroup.substring(rightIndex);
+                byte[] mes = ("updateGroup;" + chatWith + ";" + newGroup + ";" + username).getBytes();
+                DatagramPacket packet = new DatagramPacket(mes, mes.length, address, SERVER_PORT);
+                try {
+                    socket.send(packet);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            chatWith = null;
+        }
+    }
+
+    public void updateGroup(String oldGroup, String newGroup){
+        ObservableList<Message> list = chatHistory.get(oldGroup);
+        chatHistory.remove(oldGroup);
+        chatHistory.put(newGroup, list);
+        chattingFriends.remove(oldGroup);
+        chattingFriends.add(newGroup);
+        if(chatWith.equals(oldGroup)){
+            chatWith = newGroup;
+        }
     }
 
     /**
