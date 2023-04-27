@@ -385,6 +385,22 @@ public class Controller implements Initializable {
     @FXML
     public void doSendMessage() {
         String data = inputArea.getText();
+        if(data == null || data.equals("")){
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Information Dialog");
+            alert.setHeaderText(null);
+            alert.setContentText("Can not send empty message");
+            alert.showAndWait();
+            return;
+        }
+        if(!chattingFriends.contains(chatWith)){
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Information Dialog");
+            alert.setHeaderText(null);
+            alert.setContentText(chatWith + " has offlined");
+            alert.showAndWait();
+            return;
+        }
         Long timeStamp = System.currentTimeMillis();
         String sentBy = username;
         String sentTo = chatWith;

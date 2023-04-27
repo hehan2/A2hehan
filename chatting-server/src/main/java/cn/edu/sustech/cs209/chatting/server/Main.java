@@ -49,7 +49,7 @@ public class Main {
             String message = new String(packet.getData(), 0, packet.getLength());
             System.out.println("receiving data: " + message);
             String[] messageSet = message.split(",");
-            if(messageSet[0].equals("init")){
+            if (messageSet[0].equals("init")){
                 int port = Integer.parseInt(messageSet[1]);
                 InetAddress adr = null;
                 try {
@@ -57,7 +57,7 @@ public class Main {
                 } catch (UnknownHostException e) {
                     throw new RuntimeException(e);
                 }
-                if(findUser(messageSet[3]) != null){
+                if (findUser(messageSet[3]) != null){
                     byte[] mes = ("repeatName").getBytes();
                     DatagramPacket packet1 = new DatagramPacket(mes, mes.length, adr, port);
                     try {
@@ -71,7 +71,7 @@ public class Main {
                 users.add(newUser);
                 byte[] mes= ("add," + messageSet[3]).getBytes();
                 for (User user : users) {
-                    if(user != newUser){
+                    if (user != newUser){
                         DatagramPacket packet1 = new DatagramPacket(mes, mes.length, user.getAdr(), user.getPort());
                         try {
                             socket.send(packet1);
